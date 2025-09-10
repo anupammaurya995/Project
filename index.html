@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Nabha Telemedicine — Prototype</title>
+
+  <!-- jsPDF for e-prescription PDF generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    :root{--brand:#2a9d8f;--accent:#e76f51;--muted:#6c757d}
+    body{font-family:Inter, system-ui, Arial; margin:0;background:#f6f8fa;color:#222}
+    header{background:linear-gradient(90deg,var(--brand),#264653);color:#fff;padding:18px 20px}
+    .container{max-width:1100px;margin:26px auto;padding:18px}
+    .grid{display:grid;grid-template-columns:1fr 380px;gap:18px}
+    .card{background:#fff;border-radius:10px;padding:14px;box-shadow:0 6px 20px rgba(10,10,10,0.06)}
+    #chatbox{height:420px;display:flex;flex-direction:column}
+    #messages{flex:1;overflow:auto;padding:8px}
+    .msg{margin:8px 0}
+    .msg.user{text-align:right}
+    .msg .bubble{display:inline-block;padding:8px 12px;border-radius:14px;max-width:78%}
+    .msg.user .bubble{background:var(--brand);color:#fff}
+    .msg.bot .bubble{background:#eef4f3;color:#111}
+    .chat-controls{display:flex;gap:8px;margin-top:8px}
+    input[type=text]{flex:1;padding:10px;border-radius:8px;border:1px solid #ddd}
+    button{padding:10px 12px;border:none;border-radius:8px;background:var(--brand);color:#fff;cursor:pointer}
+    .mini{background:#fff;color:var(--brand);border:1px solid #ddd}
+    .section-title{font-weight:700;margin-bottom:8px}
+    .appt-list{list-style:none;padding:0;margin:0}
+    .appt-item{padding:8px;border-bottom:1px dashed #eee}
+    footer{padding:18px;text-align:center;color:var(--muted)}
+    @media (max-width:900px){.grid{grid-template-columns:1fr}#chatbox{height:320px}}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1 style="margin:0">Nabha Telemedicine — Prototype</h1>
+      <div style="font-size:13px;margin-top:6px;opacity:.9">Multilanguage AI chatbot • e-Prescription • Video consult (demo) • ABHA placeholder</div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="grid">
+      <div>
+        <div class="card">
+          <h2 class="section-title">Patient Quick Actions</h2>
+
+          <!-- ABHA / Signup -->
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+            <input id="abha" placeholder="Enter ABHA ID (demo)" style="padding:10px;border-radius:8px;border:1px solid #ddd;flex:1" />
+            <button id="btnLogin" onclick="demoSignup()">Login</button>
+          </div>
+
+          <!-- Appointment form -->
+          <div style="margin-bottom:14px">
+            <h3 style="margin:6px 0">Book Appointment</h3>
+            <form id="apptForm" onsubmit="return false">
+              <input id="pname" placeholder="Patient name" style="width:100%;padding:8px;margin-bottom:6px;border-radius:6px;border:1px solid #eee" required />
+              <input id="psymptom" placeholder="Symptoms / Short note" style="width:100%;padding:8px;margin-bottom:6px;border-radius:6px;border:1px solid #eee" required />
+              <div style="display:flex;gap:8px">
+                <input id="pdate" type="date" style="padding:8px;border-radius:6px;border:1px solid #eee;flex:1" required />
+                <select id="slot" style="padding:8px;border-radius:6px;border:1px solid #eee">
+                  <option>10:00 AM</option>
+                  <option>11:00 AM</option>
+                  <option>02:00 PM</option>
+                  <option>04:00 PM</option>
+                </select>
+              </div>
+              <div style="margin-top:8px;display:flex;gap:8px">
+                <button onclick="bookAppt()">Book</button>
+                <button class="mini" onclick="openVideoDemo()" type="button">Start Video Demo</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- E-Prescription -->
+          <div style="margin-bottom:12px">
+            <h3 style="margin:6px 0">e-Prescription (Demo)</h3>
+            <input id="drugname" placeholder="Medicine & dose (e.g. Paracetamol 500mg)" style="width:100%;padding:8px;margin-bottom:6px;border-radius:6px;border:1px solid #eee" />
+            <input id="docname" placeholder="Doctor name" style="width:100%;padding:8px;margin-bottom:6px;border-radius:6px;border:1px solid #eee" />
+            <div style="display:flex;gap:8px">
+              <button onclick="generatePDF()">Generate PDF</button>
+              <button class="mini" onclick="downloadDemoRecord()" type="button">Download Health Record</button>
+            </div>
+          </div>
+
+          <!-- IoT / Pharmacy quick -->
+          <div>
+            <h3 style="margin:6px 0">Pharmacy / IoT (Demo)</h3>
+            <div style="font-size:13px;color:var(--muted)">Simulated device readings & nearby pharmacy suggestion</div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button onclick="simulateIOT()">Simulate BP/Glucose</button>
+              <button class="mini" onclick="findPharmacy()">Find Nearby Pharmacy</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chatbot card -->
+        <div class="card" style="margin-top:16px">
+          <h2 class="section-title">AI Chatbot (Hindi / Punjabi / English)</h2>
+          <div id="chatbox">
+            <div id="messages" aria-live="polite">
+              <div class="msg bot"><div class="bubble">नमस्ते 🙏 मैं आपकी मदद कर सकता हूँ — symptoms बताएं या "help" लिखें.</div></div>
+            </div>
+
+            <div class="chat-controls">
+              <input id="chatInput" type="text" placeholder="Type in Hindi / Punjabi / English" onkeydown="if(event.key==='Enter') sendChat()" />
+              <button onclick="startVoice()">🎤</button>
+              <button onclick="sendChat()">Send</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right column -->
+      <aside>
+        <div class="card">
+          <h3 class="section-title">Upcoming Appointments</h3>
+          <ul id="appts" class="appt-list"></ul>
+        </div>
+
+        <div class="card" style="margin-top:12px">
+          <h3 class="section-title">Doctor / Admin (Demo)</h3>
+          <div style="font-size:13px;color:var(--muted)">Login as doctor to view appointments and generate prescriptions.</div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <input id="docLogin" placeholder="Doctor code" style="flex:1;padding:8px;border-radius:6px;border:1px solid #eee" />
+            <button onclick="docLogin()">Login</button>
+          </div>
+          <div id="doctorPanel" style="display:none;margin-top:10px;background:#fbfbfb;padding:8px;border-radius:6px">
+            <div style="font-weight:700">Doctor Dashboard (Demo)</div>
+            <div style="font-size:13px;color:var(--muted);margin-top:6px">Select appointment and click "Generate Prescription".</div>
+            <select id="selectAppt" style="width:100%;margin-top:8px;padding:8px;border-radius:6px;border:1px solid #eee"></select>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <input id="prescText" placeholder="Prescription text" style="flex:1;padding:8px;border-radius:6px;border:1px solid #eee" />
+              <button onclick="docGeneratePresc()">Generate</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:12px">
+          <h3 class="section-title">System Notes</h3>
+          <ul style="font-size:13px;color:var(--muted)">
+            <li>Data saved locally (demo). Connect to real backend for production.</li>
+            <li>ABHA integration requires NDHM APIs and consent flow (not included).</li>
+            <li>Video demo uses browser media only — production needs WebRTC server or 3rd party SDK.</li>
+          </ul>
+        </div>
+      </aside>
+
+    </div>
+  </main>
+
+  <footer>
+    © Nabha Telemedicine Prototype — Demo for learning
+  </footer>
+
+  <script>
+  // Chatbot Elements
+  const msgsEl = document.getElementById('messages');
+  
+  // --- Language Detection ---
+  function detectLanguage(text){
+  if(/[\u0A00-\u0A7F]/.test(text)) return 'punjabi';
+  if(/[\u0900-\u097F]/.test(text)) return 'hindi';
+  return 'english';
+  }
+  
+  // --- Add Messages ---
+  function addUserMsg(txt){
+  const p = document.createElement('div'); 
+  p.className='msg user'; 
+  p.innerHTML = `<div class="bubble">${escapeHtml(txt)}</div>`; 
+  msgsEl.appendChild(p); 
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+  }
+  function addBotMsg(txt){
+  const p = document.createElement('div'); 
+  p.className='msg bot'; 
+  p.innerHTML = `<div class="bubble">${escapeHtml(txt)}</div>`; 
+  msgsEl.appendChild(p); 
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+  }
+  function escapeHtml(unsafe) { 
+  return unsafe.replace(/[&<>"']/g, function(m) { 
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]; 
+  }); 
+  }
+  
+  // --- Chatbot Logic ---
+  function sendChat(){
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if(!text) return;
+  addUserMsg(text);
+  input.value='';
+  
+  const lang = detectLanguage(text);
+  
+  // ---- Symptom Rules ----
+  if(/(bukhar|fever|ਤਾਪਮਾਨ)/i.test(text)){
+  if(lang==='hindi') addBotMsg('Bukhar ke liye Paracetamol 500mg lo, hydrated raho aur aaram karo. Agar 2 din se zyada rahe toh doctor ko milen.');
+  else if(lang==='punjabi') addBotMsg('ਬੁਖਾਰ ਲਈ ਪੈਰਾਸੀਟਾਮੋਲ 500mg ਲਓ, ਪਾਣੀ ਵੱਧ ਪੀਓ ਤੇ ਆਰਾਮ ਕਰੋ। 2 ਦਿਨ ਤੋਂ ਵੱਧ ਰਹੇ ਤਾਂ ਡਾਕਟਰ ਨੂੰ ਦਿਖਾਓ।');
+  else addBotMsg('For fever, take Paracetamol 500mg, stay hydrated and rest. If it lasts more than 2 days, consult a doctor.');
+  }
+  else if(/(dard|pain|headache|ਸਿਰ ਦਰਦ)/i.test(text)){
+  if(lang==='hindi') addBotMsg('Sir dard ya dard ke liye Paracetamol 500mg lo. Agar lagataar dard ho toh doctor se consult karein.');
+  else if(lang==='punjabi') addBotMsg('ਸਿਰ ਦਰਦ ਲਈ ਪੈਰਾਸੀਟਾਮੋਲ 500mg ਲਓ। ਜੇ ਦਰਦ ਜ਼ਿਆਦਾ ਹੈ ਤਾਂ ਡਾਕਟਰ ਨਾਲ ਮਿਲੋ।');
+  else addBotMsg('For headache/pain, take Paracetamol 500mg. If pain continues, please consult a doctor.');
+  }
+  else if(/(khansi|cough|cold|sardi|ਜ਼ੁਕਾਮ)/i.test(text)){
+  if(lang==='hindi') addBotMsg('Khansi/sardi ke liye cough syrup aur warm water lein. Agar bukhar bhi ho toh doctor ko dikhayein.');
+  else if(lang==='punjabi') addBotMsg('ਖੰਘ/ਜ਼ੁਕਾਮ ਲਈ ਖੰਘ ਸੀਰਪ ਤੇ ਗਰਮ ਪਾਣੀ ਪੀਓ। ਜੇ ਬੁਖਾਰ ਵੀ ਹੈ ਤਾਂ ਡਾਕਟਰ ਨੂੰ ਦਿਖਾਓ।');
+  else addBotMsg('For cough/cold, take a cough syrup and drink warm water. If fever is also present, consult a doctor.');
+  }
+  else if(/(pet dard|stomach|gas|acidity|ਪੇਟ ਦਰਦ)/i.test(text)){
+  if(lang==='hindi') addBotMsg('Pet dard/acidity ke liye antacid (jaise Gelusil) lo. Agar dard bahut zyada hai toh doctor ko consult karein.');
+  else if(lang==='punjabi') addBotMsg('ਪੇਟ ਦਰਦ/ਐਸਿਡਿਟੀ ਲਈ ਐਂਟਾਸਿਡ (ਜਿਵੇਂ Gelusil) ਲੈ ਸਕਦੇ ਹੋ। ਜੇ ਦਰਦ ਵੱਧ ਹੈ ਤਾਂ ਡਾਕਟਰ ਨੂੰ ਦਿਖਾਓ।');
+  else addBotMsg('For stomach pain/acidity, you may take an antacid (like Gelusil). If severe, consult a doctor.');
+  }
+  else if(/(help|madad|ਸਹਾਇਤਾ)/i.test(text)){
+  if(lang==='hindi') addBotMsg('Aap mujhe apne lakshan (jaise bukhar, khansi, dard) bata sakte hain.');
+  else if(lang==='punjabi') addBotMsg('ਤੁਸੀਂ ਮੈਨੂੰ ਆਪਣੇ ਲੱਛਣ (ਜਿਵੇਂ ਬੁਖਾਰ, ਖੰਘ, ਦਰਦ) ਦੱਸ ਸਕਦੇ ਹੋ।');
+  else addBotMsg('You can tell me your symptoms like fever, cough, or pain.');
+  }
+  else {
+  if(lang==='hindi') addBotMsg("Maaf kijiye, mujhe samajh nahi aaya. Kripya symptoms detail mein batayein.");
+  else if(lang==='punjabi') addBotMsg("ਮਾਫ ਕਰਨਾ, ਮੈਨੂੰ ਸਮਝ ਨਹੀਂ ਆਇਆ। ਕਿਰਪਾ ਕਰਕੇ ਆਪਣੇ ਲੱਛਣ ਵਧੀਆ ਤਰੀਕੇ ਨਾਲ ਦੱਸੋ।");
+  else addBotMsg("Sorry, I didn’t understand. Please describe your symptoms clearly.");
+  }
+  }
+  
+  // --- Voice Recognition ---
+  let recognition;
+  function startVoice(){
+  if(!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)){
+  alert('Speech recognition not supported in this browser');
+  return;
+  }
+  navigator.mediaDevices.getUserMedia({ audio: true })
+  .then(() => {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.lang = 'hi-IN'; // default (auto-detect after input)
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+  
+  recognition.onresult = (e) => {
+  const t = e.results[0][0].transcript;
+  document.getElementById('chatInput').value = t;
+  sendChat();
+  };
+  recognition.onerror = (e) => { alert('Voice error: ' + e.error); };
+  recognition.start();
+  })
+  .catch(err => { alert("Mic permission denied: " + err.message); });
+  }
+  </script>
+</body>
+</html>>
+  </script>
+</body>
+</html>>);
+    })();
+  </script>
+</body>
+</html>>
